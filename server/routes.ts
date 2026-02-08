@@ -4,10 +4,7 @@ import { storage } from "./storage";
 import { api } from "@shared/routes";
 import { z } from "zod";
 import multer from "multer";
-import * as pdfLib from "pdf-parse";
-
-// @ts-ignore
-const pdf = pdfLib.default || pdfLib;
+import { PDFParse, VerbosityLevel } from "pdf-parse";
 
 // Configure multer for memory storage
 const upload = multer({
@@ -41,11 +38,14 @@ export async function registerRoutes(
       let rawText = "";
       
       try {
-        const pdfData = await pdf(buffer);
-        rawText = pdfData.text;
+        const parser = new PDFParse({ data: new Uint8Array(buffer), verbosity: VerbosityLevel.ERRORS });
+        await parser.load();
+        const result = await parser.getText();
+        rawText = result.text || "";
+        parser.destroy();
       } catch (err) {
         console.error("PDF Parsing Error:", err);
-        return res.status(500).json({ message: "Failed to parse PDF file" });
+        return res.status(400).json({ message: "Could not extract text from this PDF. Make sure it's a text-based PDF (not a scanned image)." });
       }
 
       // Extract fields using Regex
