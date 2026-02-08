@@ -1,6 +1,5 @@
-import { db } from "./db";
-import { invoices, type Invoice, type InsertInvoice, type ExtractedData } from "@shared/schema";
-import { eq } from "drizzle-orm";
+import { db, hasDatabase } from "./db";
+import { invoices, type Invoice, type InsertInvoice } from "@shared/schema";
 
 export interface IStorage {
   createInvoice(invoice: InsertInvoice): Promise<Invoice>;
@@ -9,13 +8,36 @@ export interface IStorage {
 
 export class DatabaseStorage implements IStorage {
   async createInvoice(insertInvoice: InsertInvoice): Promise<Invoice> {
-    const [invoice] = await db.insert(invoices).values(insertInvoice).returning();
+    const [invoice] = await db!.insert(invoices).values(insertInvoice).returning();
     return invoice;
   }
 
   async getInvoices(): Promise<Invoice[]> {
-    return await db.select().from(invoices);
+    return await db!.select().from(invoices);
   }
 }
 
-export const storage = new DatabaseStorage();
+/** In-memory storage for testing when DATABASE_URL is not set */
+export class InMemoryStorage implements IStorage {
+  private invoices: Invoice[] = [];
+  private nextId = 1;
+
+  async createInvoice(insert: InsertInvoice): Promise<Invoice> {
+    const row = {
+      id: this.nextId++,
+      fileName: insert.fileName,
+      fileSize: insert.fileSize,
+      extractedData: insert.extractedData,
+      rawText: insert.rawText ?? null,
+      createdAt: new Date(),
+    };
+    this.invoices.push(row as Invoice);
+    return row as Invoice;
+  }
+
+  async getInvoices(): Promise<Invoice[]> {
+    return [...this.invoices];
+  }
+}
+
+export const storage: IStorage = hasDatabase ? new DatabaseStorage() : new InMemoryStorage();

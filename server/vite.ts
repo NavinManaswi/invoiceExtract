@@ -31,7 +31,8 @@ export async function setupVite(server: Server, app: Express) {
 
   app.use(vite.middlewares);
 
-  app.use("/{*path}", async (req, res, next) => {
+  // Catch-all: serve SPA index.html for any request not handled by API or Vite
+  app.use(async (req, res, next) => {
     const url = req.originalUrl;
 
     try {
