@@ -1,6 +1,9 @@
 import { db, hasDatabase } from "./db";
 import { invoices, type Invoice, type InsertInvoice } from "@shared/schema";
 
+/** Drizzle insert type for invoices (omitting id, createdAt) */
+type InvoiceInsert = typeof invoices.$inferInsert;
+
 export interface IStorage {
   createInvoice(invoice: InsertInvoice): Promise<Invoice>;
   getInvoices(): Promise<Invoice[]>;
@@ -8,7 +11,10 @@ export interface IStorage {
 
 export class DatabaseStorage implements IStorage {
   async createInvoice(insertInvoice: InsertInvoice): Promise<Invoice> {
-    const [invoice] = await db!.insert(invoices).values(insertInvoice).returning();
+    const [invoice] = await db!
+      .insert(invoices)
+      .values(insertInvoice as InvoiceInsert)
+      .returning();
     return invoice;
   }
 
